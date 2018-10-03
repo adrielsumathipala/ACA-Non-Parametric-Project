@@ -1,0 +1,1156 @@
+---
+title: "The Post-Affordable Care Act Landscape: A Non-Parametric and Parametric Statistical Analysis"
+author: "Adriel Sumathipala"
+output: 
+  pdf_document:
+  toc: true
+  number_sections: true
+linkcolor: "blue"
+urlcolor: "blue"
+citecolor: "blue"
+---
+
+\tableofcontents
+\newpage
+
+#Introduction and Objectives: 
+
+For this project, I will analyze trends in health outcomes in the post-ACA (Affordable Care Act) environment. Specifically, I will examine the healthcare landscape of my home state, Virginia. To better understand the healthcare landscape in Virginia, I will use both non-parametric and parametric statistical models to quantify healthcare trends and make projections about future healthcare premiums. With a growing elderly population, rising per-capita healthcare costs, and highly unequal health outcomes, my analysis aims to make projections about the future of healthcare in my state and understand how current healthcare policies, such as the Affordable Care Act, are being used and improving health outcomes.
+
+Through this project, I will employ rigorous analysis to large, complex healthcare datasets available on a range of Federal agencies’ webpages. Specifically, I will use the Qualifying Health Plan Selections by Metal Level and County datasets from the Centers for Medicare and Medicaid (CMS) (Source: data.cms.gov). These datasets provides the selection of the ACA’s qualifying health plans, which are the heavily-subsidized insurance plans available on the state exchanges created by the ACA. I will join this table with 2016 Educational Attainment Data, 2016 US Census Income Data, and 2016 US Medicare Expenditures, to better understand the social and economic factors underlying the ACA’s impact on Virginia’s healthcare landscape. From these datasets I will select only the counties that lie within Virginia. 
+
+I anticipate that non-parametric models will be more useful in predicting future premium prices than parametric models, because non-parametric models make fewer assumptions about the data. Given the large number of factors that affect health outcomes, I believe making fewer assumptions about the data will improve my models.
+
+Finally, this project is made possible only by the enormous wealth of data that has been generously provided by several federal agencies. In the future, I hope to use more datasets from different agencies through this project and in later courses at Yale.
+
+#Part 1: Pre-Processing and Describing Data
+
+##Importing Data:
+
+In the code below, I have taken several steps to pre-process the data and imported all necessary R libraries. First, I read in nearly 1GB (917 mb) worth of text data from spreadsheets created by querying federal databases. These datasets contain data for all 50 US states. I am importing the following data sets:
+
+- 2017, 2016, 2015, 2014, 2013 Qualified Health Plan Data
+
+  - Each of these datasets includes 150 features:
+  
+      - Monthly Premiums in every FIPS county for every age group, gender, and family household size
+      
+          - The health insurance exchanges created by the ACA set premiums based off age, gender, and family household size charactersitics
+          
+      - Drug Deductibles, Maximum Out of Pocket Expenditures, Medical Deductibles
+      
+      - Co-Pays for Primary Care Physicians, Specialists, Emergency Room visits, Inpatient Facilities, Generic   Drugs, Preferred Brand Drugs, Specialty Drugs
+      
+- 2016 US Medicare Expenditure, Enrollee, and Reimbursement Data
+
+- 2016 US Census Income by Household Type, Marriage, Race, Sex, Age
+
+##Pre-Processing Data
+
+In the code [here](#apend1), I have taken some early pre-processing steps. I first filter the QHP datasets by selecting only the entries from Virginia. Across all the datasets, the data are organized by county FIPS (Federal Information Processing Standards) codes. FIPS codes are the standard geographic  unit used by federal agencies to organize data. Accordingly, I have created a vector that stores unique Virginia FIPS codes. Because the data I am using comes from federal databases, it contains data on all 50 states, whereas I am only interested in my home state of Viriginia. As a result, I will use this vector containing unique Virginia FIPS codes with `dplyr` package to select the data relevant to this project, using functions such as `inner_join()`, `left_join()`, etc.
+
+Continuing my work to pre-process the data, I wrote a function that strips commas and dollar signs from matrix columns and applied it to datasets using the `apply()` function to speed up implementation of code. I also wrote code to reconcile differences in the FIPS system from 2013-2017 as regional and county demarcations within my home state of Virginia have changed. I wrote a function that enables the plotting of monthly premiums, given the plan level, age/family household structure, and year using the `choroplethr` package. This function strips the "$" sign, and selects the appropriate dataset by year, plan level, and age/household structure. Because there are several plans, each with their own monthly premium price, for each year, plan level, and age/household structure in each FIPS district, I then use the `dplyr` `summarise()` function to compute the mean premium price in each FIPS district. Finally, I connect the FIPS code with their associated monthly premium so they can be plotted appropriately.
+
+
+##Exploring dimensionality of the data:
+
+*QHP Dataset:* To get a sense of the dimensionality of the Qualified Health Plan (QHP) data, I have printed out the names of the variables in the 2017 QHP dataset [here](#apend2). This dataset includes a few variables that will not be useful such as "Plan Marketing Name" or "Network URL".
+
+*Medicare Dataset:* In this project, I will also use the Medicare dataset to better understand cost, healthcare utilization, and federal healthcare spending within each FIPS district. I have printed out the names of 10 variables within this dataset [here](#apend3).
+
+
+*Education Dataset:* In this project, I will also use the 2016 Educational Attainment dataset published by the US Census. I am interested in this dataset to better understand the relationship between education and monthly premiums. There are two possible theories regarding healthcare and education. The first is that higher education leads to lower premiums because people with higher levels of educations have healthier lifestyles/diets and don't live/work in dangerous environments. The second is that higher education leads to higher premiums because people with higher educations live in more urban areas with higher costs of living and are more able to seek expensive specialist care when they need it. As a result, their overall per-capita healthcare expenditures are higher which is then reflected in the premiums they pay. I have printed out the names of the 10 variables within the 2016 Educational Attainment dataset (which contains 771 total variables) [here](#apend4) to provide a high-level overview of the data structure.
+
+*Income Dataset:* I will also use the 2016 Income dataset from the US Census. I suspect income has a strong relationship with premiums as insurers will price their premiums, in part, based off what consumers can pay. I have printed out 10 variables from the 2016 US Census Income dataset [here](#apend5).
+
+##Choropleth Mapping of Data:
+
+After pre-processing data, I have plotted monthly premium data for Virginia counties. I have plotting the average monthly premium price for **Bronze Plans** for **21-year-old non-married adults** from 2013-2017 [here](#apend6). I have also plotted 2016 income data by FIPS county codes [here](#apend7). As seen [here](#apend7), incomes are generally higher in the northern part of Virginia, near DC, where many suburbanites live and commute to DC. The poorest parts of the state are the south and southwest regions which are former industrial and coal mining regions. In addition to income, I have plotted the percentage of the population with a HS or Bachelor's degree by FIPS county [here](#apend8). As we can see there is a strong correlation between the income and education. Again, the northern part of state is both much wealthier and better educated and the southwestern part of the state is both poor and not well-educated. Additionally, with regards to the percentage of the population with a Bachelor's degree we see a massive disparity between districts with only 8% of the population having a Bachelor's degree with districts where 80% of people have a Bachelor's degree.
+
+#Part 2: Comparison of Non-Parametric and Parametric Models in Low-Dimensions
+
+##Non-Parametric vs. Parametric Analysis of Healthcare Premiums and Medicare Reimbursements
+
+In this section, I will compare non-parametric and parametric estimators using insurance premium and Medicare reimbursement data. I will test two non-parametric regression models and one parametric models to compare their relative performance:
+
+- Local Regression (Non-Parametric)
+  
+    - First-Degree Local Polynomial Regression (Local Linear Regression)
+  
+    - Second-Degree Local Polynomial Regression
+
+- Cubic Smoothing Spline (Non-Parametric)
+
+- Linear Regression (Parametric)
+
+In theory, there shouldn't be a strong relationship between Medicare reimbursements and monthly premiums because public healthcare spending does not have a strong effect on private insurance markets. Indeed, the scattered data reflect this theory as seen [here](#apend9). I have fitted a non-parametric regression function, predicting Bronze Plan monthly premiums for 21-year-old adults using the average Medicare Enrollee reimbursement in each FIPS county. I built a local regression model using the `locfit` package. I have selected the bandwidth through cross-validation and implemented 95% confidence intervals. This model can be viewed [here](#apend10). 
+
+In the plot [here](#apend10), we can see that the confidence bands (black lines) around the local linear regression function (red). The local linear regression function has a wave-like shape, whereas the true relationship between these two variables should be a horizontal line as the variables are uncorrelated, as we will see later. The 95% confidence interval in this [plot](#apend10) demonstrates high confidence that the expected value of the predicted $E(\hat{r}(x))$ function lies within this confidence interval. This does not, however, guarantee that the true regression function $r(x)$ lies within this confidence interval. 
+
+[Here](#apend11), I have constructed a `locfit` model with second-degree local polynomial regression. The curvature of the fit has increased substantially with the second-degree local polynomial regression from the local linear regression model fitted earlier. From prior knowledge of the data, there should be no meaningful relationship between these two variables and thus, in this case, the local regression function is fitting to noise. The true regression function here would be a straight line, as the two variables are uncorrelated, because public insurance expenditures for retirees should not have a substantial effect on premiums for young adults in private insurance markets. Yet, as we can see, the second-degree local polynomial regression function takes a wave-like fit to the data, with the most significant curvature happening towards the boundaries of the dataset. 
+
+Overall, we see the confidence bands for the second-degree local polynomial regression are wider than the confidence bands for the local linear regression. Increasing the degree of the model, in this case, appears to lower bias at the expense of increasing variance which in turns leads to larger overall confidence bands. We can see in both the local linear regression and second-order local polynomial regression, the confidence bands widen dramatically towards the boundaries of the data. This shows that both local regression functions have high boundary bias. 
+
+The cubic smoothing spline (non-parametric) and linear regression model (parametric), will have lower boundary bias and alleviate this problem. In [this plot](#apend11), we can also see that the confidence intervals widen towards the boundary of the function, which we will see in both the cubic smoothing spline and linear regression.
+
+Next, I have implemented the cubic smoothing spline and selected the smoothing parameter using cross-validation. The cubic smoothing spline model can be viewed [here](#apend12). I have implemented asymmetric confidence bands for cubic smoothing splines as developed at [Carnegie Mellon University](http://www.stat.cmu.edu/~cshalizi/402/lectures/11-splines/lecture-11.pdf).
+
+Interestingly enough, we see a substantial difference between the second-order local polynomial regression and cubic smoothing spline fits. The second-order local polynomial regression function has a distinct wave shape, whereas the cubic smoothing spline does not. The cubic smoothing spline has a slight downward slope, indicating some bias, but overall approximates the linear regression function as we will see below. It appears that the smoothing spline approximates the linear regression function in cases of high noise. The cubic smoothing spline also eliminated the boundary bias problem by having a straight fit to the data towards the boundary of the dataset. This is in accordance with the idea that higher-order polynomial fits, in general, have reduced boundary bias as we were taught in class. In class, we saw how local regression performed worse than smoothing splines at the boundaries when fitting data generated from a function such as $r(x) = x^2$.
+
+Finally, I have implemented the linear regression model and constructed 95% confidence intervals. This linear regression model can be viewed [here](#apend13). In this plot, we can see there is no real relationship between reimbursement rates and premiums—the data are scattered and random. The nearly horizontal line in the linear regression supports this finding. Although the line is not exactly horizontal, the p-value of the slope is very large (p= 0.444), thus indicating this slight slope downwards is not significant. A printout of the linear model summary can be seen here [here](#apend14).
+
+
+The 95% confidence interval for linear regression shows smaller confidence intervals towards the mean of the data, where there are a greater number of data points, and larger confidence intervals towards the boundaries, where there are fewer data points.
+
+With this dataset, we see no difference between the linear regression fit and cubic smoothing spline fit. Because of the large noise in this data, the cubic smoothing spline approximates the OLS solution. However, both the linear regression function and cubic smoothing spline performed better than the local regression function which fit a wave-like function to uncorrelated, noisy data, providing lower bias at the expense of much higher variance as we can see with the larger confidence intervals of the local regression fits.
+
+##Non-Parametric vs. Parametric Analysis of Education and Income:
+
+Continuing my comparison of non-parametric and parametric methods, I have tested the performance and properties of parametric and non-parametric estimators using a new dataset—comparing the relationship between education and income.Below, I have fit a local linear regression (non-parametric) and linear regression (parametric) fits to 2016 median household income and percent of population with a high school degree for each county in Virginia. In the plots below, the 95% confidence intervals are marked by the dotted red lines. The local linear regression (non-parametric) and linear regression (parametric) models can be viewed [here](#apend15).
+
+The error of the local linear regression model, with the bandwidth selected by cross-validation, is $1.622168$ x $10^8$. The non-parametric MSE is **smaller** than the linear regression MSE which is $1.858521$ x $10^8$. We can see in the earlier plots that the non-parametric model is a better fit to the data. However, we can also see that the parametric model has overall tighter confidence intervals than the non-parametric model. In particular, both models have large bias around the boundaries, where the data begin to increase exponentially. As a result, the confidence intervals of both functions increase around the boundaries.
+
+Examining the plots [here](#apend15), it appears the local linear regression fit (non-parametric) takes an exponential form. In fact, the general shape of the data appears to be exponential. With this prior information, I will fit an exponential regression, a parametric method, to the data and compare this exponential fit with the local linear regression (non-parametric).
+
+I built the exponential model by first fitting a linear regression to a log transformation of the data such that:
+
+$$
+\begin{aligned}
+log(Y_i) = b + ax_i
+\end{aligned}
+$$
+
+I then took the exponential of this linear model, yielding the exponential model of the form:
+$$
+\begin{aligned}
+Y_i = e^{b + ax_i}
+\end{aligned}
+$$
+
+[Here](#apend16), I plotted the exponential model (parametric) with 95% confidence intervals. The exponential model is an overall much better fit to the data than the linear regression model. In fact, the parametric exponential model, is nearly identical to the local linear regression model (non-parametric), as seen in this side-by-side comparison plot [here](#apend1X)
+
+As we can see, having *a priori* information about the structure of the data allows us to build parametric models that are quite similar to the performance of non-parametric models. Thus, in certain cases, the parametric model can approximate the non-parametric model. Because of the large bandwidth, $h$, used to construct the local linear regression fit, the non-parametric fit is quite smooth and closely approximates the exponential parametric fit.
+
+Moving on from analyzing high school data to bachelor's degree data, I have similarly built a local linear regression (non-parametric) and linear regression (parametric) model for this new data. These models can be viewed [here](#apend17).
+
+As we can see in the plots [here](#apend17), there is little difference between the parametric and non-parametric model. The non-parametric model appears to largely converge to the parametric linear model. The non-parametric model has far wider confidence interval towards the rightmost boundary of the data, as there are fewer datapoints there. As with the earlier example, the non-parametric regression fit can approximate the parametric fit, if the underlying structure of the data is linear, as in this case, or exponential, as in the earlier case.
+
+
+#Part 3: Predicting Monthly Premiums using Non-Parametric (GAM) and Parametric (LASSO) Methods
+
+##Importance of Monthly Premium Prediction Models:
+
+Within the field of healthcare analytics, there is a great deal of interest in predicting monthly insurance premiums. These monthly premiums have a substantial impact on the healthcare landscape, influencing consumer purchasing decisions, healthcare resource utilization, and the overall risk pool. Thus, being able to predict future monthly premiums is highly useful for both private and public healthcare decisionmakers 
+
+Within the private sector, hospitals are interested in knowing the monthly premiums of a particular demographic group to know how many uninsured patients they should expect to treat in the upcoming fiscal year. Such uninsured patients have a greater tendency to not make payments for their treatments and declare bankruptcy. In the public sector, predicting healthcare premiums is important to allocate sufficient funds for the cost-sharing reduction (CSR) program established by the Affordable Care Act (ACA). For lawmakers in Congress, this information is crucial when developing a budget because the state exchanges established by the ACA are reliant on federal funding; if there are not enough funds available, insurers will exit the markets or increase costs for consumers.
+
+##GAM Model Assumptions:
+
+In the code below, I will compare the relative performance of non-parametric and parametric regression models. I will build a generalized additive model (GAM), a non-parametric method, and a LASSO model (least absolute shrinkage and selection operator), a parametric-method. I am using LASSO because of the large number of variables I am using in this prediction model. The LASSO method is a selection operator and promotes parsimonious models by setting some model coefficients equal to zero. 
+
+In the code below, I have constructed a smoothing spline GAM model. This model makes two assumptions:
+
+1.) The errors are normally distributed
+
+2.) $m_i(x)$ is a cubic smoothing spline
+
+I am using the Gaussian family for a description of the error distribution. This assumes the model errors are normally distributed such that the general form of the data is:
+
+$$
+\begin{aligned}
+Y_i = m_1(x_{i,1}) + m_2(x_{i,2}) + ... + m_p(x_{i,p}) + N(0, 1)
+\end{aligned}
+$$
+
+Furthermore, I am assuming that each regression function is of the form of a cubic smoothing spline such that $m_i(x)$ is:
+
+$$
+\begin{aligned}
+m_i(x) = argmin_{\hat{f}(x)} \sum_{i=1}^{n}\{Y_{i} - {\hat {f}}(x_{i})\}^{2}+\lambda \int {\hat {f}}''(x)^{2}dx
+\end{aligned}
+$$
+
+##Building Spline GAM Model
+
+To prepare for modelling using GAM, I created a dataframe that combines all predictor variables. This data manipulation code can be viewed in the appendix [here](#apend18)
+
+In this combined dataset, `ACAdf`, I have extracted only the most important features. This data set contains 16 variables including:
+
+- 8 Medicare Features (Number of Enrollees, Average Reimbursements, etc.)
+
+- 2 Education Features (% with Bachelor's or HS Degree)
+
+- 4 Economic Features (Median Household, Married Couple, Family, and Non-Family annual incomes)
+
+- 1 Healthcare Plan Feature (Annual Deductible)
+
+- 1 Geographic Feature (FIPS County Code)
+
+I will build two types of GAM Models:
+
+- Smoothing Spline GAM Model
+
+- Local Regression GAM Model
+
+I am testing these two methods and comparing their relative performance. I first built a GAM model using the smoothing splines method. In the plots [here](#apend19), I have plotted the spline fit for each variable, with the confidence intervals (dashed lines), and residuals (black points). As we can see, this model has large residuals. Moreover, we can see that most of the variables are uncorrelated and the estimated regression functions are straight lines. The only variables with a decent relationship with premiums is the percentage of population with bachelor's degrees and annual deductibles. We can see that more educated populations tend to have higher premiums—this may be because more educated populations are more likely to take advantage of high-cost specialist care. Interestingly enough, deductibles and premiums appear to have a parabolic relationship, for which there is no obvious explanation. In [this plot](#apend20), I have compared non-parametric and parametric fits to the deductible data. Here, the blue line is the local regression fit (non-parametric) and the red line is the linear fit (parametric). The non-parametric fit is clearly a better fit to the data. Examining [this plot](#apend20) and the [plots produced by the GAM model](#apend19), I believe the non-parametric model (GAM) will outperform the parametric model (LASSO). I have visualized the fit of the smoothing spline GAM model by plotting the residuals [here](#apend21). In this plot, we can see that the model has a large boundary bias and is unable to accurately predict large and small premium prices far away from the mean, plotted as the vertical black line. Before moving onto local regression GAM, I have evaluated the performance of the spline smoothing GAM model using `k-fold` cross-validation. The code for this evaluation of GAM performance can be seen [here](#apend22).
+
+
+##Building GAM Local Regression
+
+For this GAM model, I have used the changed the earlier GAM model assumptions and I am now using a local linear regression estimator to fit each variable. I will test and see if this improves model performance. This alteration changes the earlier assumption that $m_i(x)$ was a smoothing spline and now assumes that $m_i(x)$ is a local regression function, not a spline. This GAM local regression model can be seen [here](#apend23).
+
+Here, we can see that using local regression did not substantially change the model's fit to the predictor variables. [These plots](#apend23) show that most of the variables do not have strong relationship with premium prices as seen with the GAM smoothing spline model. However, as with the GAM smoothing splines, the deductible variable has a strong relationship with monthly premiums, forming an interesting parabolic relationship between deductibles and monthly premiums. As we can see in these [plots](#apend23), the `s()` smoothing spline fit is smoother than the `lo()` local regression fit. However, the overall model predictions from the GAM local regression fit remain similar to the GAM smoothing spline fit as we can see in a side-by-side comparison of the residuals from both models [here](#apend24).
+
+The boundary bias seen in the linear relationship in [this plot](#apend24) can be reduced by decreasing the smoothness of the spline or local regression fits to the data. Decreasing the smoothness of the fitted functions will decrease bias at the expense of increasing variance. I have reduced the smoothness of the GAM fits by decreasing the `spar` and `span` model parameters. These new models and their associated residuals can be seen [here](#apend25).
+
+As we can see in this [residuals plot](#apend25), the residuals have been dramatically decreased by reducing the smoothness of the local regression and spline smoothing functions. Moreover, the boundary bias seems to have decreased substantially and residuals are more evenly distributed about 0. Finally, I have calculated the `k-fold` cross-validation MSE to compare the GAM local regression to the GAM smoothing spline model. This code can be viewed [here](#apend26).
+
+The k-fold validation MSE are as follows for the two GAM models:
+
+- GAM local regression = 11431.98
+
+- GAM smoothing spline = 10525.24
+
+From the MSE values calculated above, it would appear that the smoothing spline GAM model outperformed the GAM local regression model.
+
+##Multivariate LASSO Regression Model (Parametric)
+
+After examining the performance of non-parametric prediction models, I will now move on to examine a parametric model—specifically the LASSO regression model. Because of the high number of variables used to predict premiums, I am using the LASSO method to eliminate unnecessary variables and improve overall model performance. The LASSO method behaves as a selector operator and can set model coefficients equal to zero. The LASSO can be defined as the following where $\lambda$ is the penalty parameter and shrinks model coefficients:
+
+$$
+\begin{aligned}
+\hat{m}(x) = argmin_\beta ||Y-X\beta||^{2}_{2} + \lambda|\beta|_1
+\end{aligned}
+$$
+
+
+To construct the LASSO model I will first find the optimal lambda value using k-fold cross-validation (50 iterations). This process and the associated plot of $log(\lambda)$ vs. MSE can be seen [here](#apend27). Having selected the optimal $\lambda$, I will construct the LASSO model using this $\lambda$ value. Several plots showing the mechanics of the underlying LASSO model and the decay of coefficient size as a function of $\lambda$ can be seen [here](#apend28). To visualize the fit of the LASSO, residuals from the LASSO model can be seen [here](#apend28).
+
+In the residuals plot [here](#apend28), it appears the LASSO model has boundary bias, wherein the model is unable to accurately predict premiums far away from the mean. The solid black line in the plot is the mean of the data. This was also the case with both non-parametric GAM models, as seen in this [side-by-side comparison plot](#apend29). Finally, I have calculated the k-fold cross-validated MSE for the LASSO model. The code for this evaluation of model performance can be seen [here](#apend30).
+
+#Part 4: Conclusions
+
+##The Challenge of Predicting Insurance Premiums:
+
+In general, it remains a difficult, largely unsolved problem to [predict healthcare premiums](https://pdfs.semanticscholar.org/3ff2/ab22e83410f82d49d4b9fde86a8257924cf6.pdf), which is reflected in the subpar GAM model performance as seen above. The difficulty in this problem reflects the complex nature of the American healthcare system which involves 1.) a large range of variables not reflected in the analysis above and 2.) substantial regional care pricing variation. A [Yale research study](http://www.healthcarepricingproject.org/) examined the regional variation in healthcare care pricing, finding an enormous amount of variation in pricing between different regions. For instance, an MRI costs 12 times more in Bronx, New York than in Baltimore, Maryland. This regional variation in costs is in turn reflected in the regional variation in premium pricing. As a result of these factors, neither the non-parametric nor parametric models could accurately and reliably predict premium prices.
+
+##Comparing Non-Parametric vs. Parametric Model Performance:
+
+Despite the shortcomings of prediction accuracy, the non-parametric model performed twice as well as the parametric model— the non-parametric model had half the k-fold cross validation MSE as the parametric model:
+
+- **LASSO Model:** 21171.69
+
+- **GAM Local Regression (Non-Parametric):** 11431.98
+
+- **GAM Spline Smoothing (Non-Parametric):** 10525.24
+
+
+This outcome shows the benefits of using non-parametric models in applications where there are non-linear relationships between predictor variables. Within this dataset, we saw a large amount of noise and non-linear relationships, which is likely why the non-parametric model performed better. Finally, the spline smoothing GAM model performed 8% better than the local regression GAM model. This indicates that increasing smoothness in the fits to the data lowered overall model risk and improved performance.
+
+##Future Work:
+
+This work could be further improved by using the entire national datasets to build more informative models, rather than looking at a single state. Using the national dataset could reduce overall model error by increasing the training dataset size and building models that are less prone to outliers. As Professor Lafferty said on Piazza, "there's no data like more data".
+
+This work could also be improved by looking at a greater range of variables outside of Medicare, Education and Income variables. Further work could examine the influence of Medicaid, public health, and other variables on premium prices. Healthcare insurance premiums are influenced by a wide range of factors not reflected in the data sets used in the analysis and better models could be developed by using a wider array of variables and then using a selection method such as LASSO to identify the most significant features for prediction.
+
+\newpage
+
+#Appendix:
+
+##Data Processing Code {#apend1}
+
+Return to [Pre-Processing Data]
+
+```{r message=FALSE, warning=FALSE, comment=FALSE, error=FALSE, prompt=FALSE}
+#Import mapping libraries:
+library(choroplethr)
+library(choroplethrMaps)
+library(dplyr)
+library(data.table)
+library(locfit)
+library(Iso)
+library(gam)
+library(splines)
+library(glmnet)
+data("df_pop_county")
+
+  
+#Import QHP (Qualified Healthare Plan) and clean data
+plans <- read.csv("2016_Plans.csv")
+qhp18 <- data.table::fread("PHY18.csv")
+qhp17 <- data.table::fread("PY2017_Medi-Indi-Land-08_11_2017.csv")
+qhp16 <- data.table::fread("PY2016_Med-Indi-Land-07-29-2016.csv")
+qhp15 <- data.table::fread("PY2015_Med-Indi-Land-08-13-2015.csv")
+qhp14 <- data.table::fread("Individual_Market_Medical_8_11_14.csv")
+countyNames <- data.table::fread("CountyNamesFIPS.csv")[,1:2]
+colnames(countyNames) <- c("FIPS County Code", "County Name")
+medicareraw <- data.table::fread("medicare.csv")
+colnames(medicareraw)[1] <- "FIPS County Code"
+medicareVAtmp <- right_join(medicareraw, countyNames)
+medicareVAtmp$`County name` <- NULL
+medicareVAtmp$`County Name` <- NULL
+
+vaFIPS <-  data.frame(region = unique(filter(qhp18, qhp18$`State Code` == "VA")$`FIPS County Code`))
+
+#Importing 2016 Income Data from US Census
+#Data is organized by FIPS County codes:
+incomeRaw <- data.table::fread("2016Income.csv")
+incomeVA <- select(incomeRaw, c(Id2, `Households; Estimate; Median income (dollars)`, `Nonfamily households; Estimate; Median income (dollars)`, `Married-couple families; Estimate; Median income (dollars)`, `Families; Estimate; Median income (dollars)`)) 
+names(incomeVA) <- c("region", "HouseholdIncome", "NonFamilyIncome", "MarriedCoupleIncome", "FamilyIncome")
+income <- select(incomeRaw, c(Id2, `Households; Estimate; Median income (dollars)`))
+colnames(income) <- c("region", "value")
+vaIncome <- left_join(vaFIPS, income)
+
+#2016 Educational Attainment Data from US Census
+#Data organized by FIPS county codes:
+eduRaw <- data.table::fread("2016Education.csv")
+```
+
+```{r, warning = FALSE, message = FALSE}
+#Strip commas from CSV files:
+stripComma <- function(charVec){
+  numTmp <- gsub('[,]', '', charVec)
+  num <- as.numeric(numTmp)
+  return(num)
+}
+
+medicareVA <- data.frame(sapply(medicareVAtmp, stripComma))
+
+#Format FIPS correctly for earlier years
+formatFIPS <- function(t, CaseIndicator){
+  countyN <- countyNames
+  if(CaseIndicator == 1){
+    countyN$`County Name` <- toupper(countyN$`County Name`)
+  }
+  tmp <- data.frame(t[,2])
+  colnames(tmp) <- "County Name"
+  tmp$`County Name` <- as.character(tmp$`County Name`)
+  x <- left_join(tmp, countyN)
+  colnames(t)[2] <- "FIPS County Code"
+  t$`FIPS County Code` <- x$`FIPS County Code`
+  return(t)
+  
+}
+
+va18 <- filter(qhp18, qhp18$`State Code` == "VA")
+va17 <- filter(qhp17, qhp17$`State Code` == "VA")
+va16 <- formatFIPS(filter(qhp16, qhp16$`State Code` == "VA"), 0)
+va15 <- formatFIPS(filter(qhp15, qhp15$State == "VA"), 0)
+va14 <- formatFIPS(filter(qhp14, qhp14$State == "VA"), 1)
+
+stripDollar <- function(string){
+  numeric <- as.numeric(gsub('[$,]', '', string))
+  return(numeric)
+}
+
+plotByPlan <- function(planType, age, yearDF){
+  planDF <- filter(yearDF, yearDF$`Metal Level` == planType)
+  indx <- which(colnames(yearDF) == age)
+  planDF[,indx] <- as.numeric(gsub('[$,]', '', planDF[,indx]))
+  df <- planDF[,c(2, indx)]
+  colnames(df) <- c("region", "value")
+  tmp <- dplyr::group_by(df, region)
+  plt <- dplyr::summarise(tmp, MeanPrice = mean(value))
+  colnames(plt) <- c("region", "value")
+  return(plt)
+}
+
+
+premiumsDeductible <- function(planType, age, deductible, yearDF){
+  planDF <- filter(yearDF, yearDF$`Metal Level` == planType)
+  premiumIndx <- which(colnames(yearDF) == age)
+  deductIndx <- which(colnames(yearDF) == deductible)
+  planDF[,premiumIndx] <- stripDollar(planDF[,premiumIndx])
+  planDF[,deductIndx] <- stripDollar(planDF[,deductIndx])
+  df <- planDF[,c(2, premiumIndx,deductIndx)]
+  colnames(df) <- c("region", "premiums", "deductibles")
+  tmp <- dplyr::group_by(df, region)
+  plt <- dplyr::summarise(tmp, premium = mean(premiums), deductible = mean(deductibles))
+  return(plt)
+}
+
+test <- premiumsDeductible("Bronze", "Premium Adult Individual Age 21", "Medical Deductible - Individual - Standard", va18)
+```
+
+##QHP Variable Names {#apend2}
+
+Return to [Exploring dimensionality of the data:]
+
+```{r}
+names(qhp18)[c(c(1:5), c(30:35))]
+```
+
+##Medicare Variable Names {#apend3}
+
+Return to [Exploring dimensionality of the data:]
+
+```{r}
+names(medicareraw)[1:10]
+```
+
+##2016 Educational Attainment Variable Names {#apend4}
+
+Return to [Exploring dimensionality of the data:]
+
+```{r}
+names(eduRaw)[15:25]
+```
+
+##2016 US Census Income Data {#apend5}
+
+Return to [Exploring dimensionality of the data:]
+
+```{r}
+names(incomeRaw)[20:30]
+```
+
+##Choropleth Mapping of Premium Data {#apend6}
+
+Return to [Choropleth Mapping of Data:]
+
+```{r, warning=FALSE, error=FALSE, message = FALSE}
+#Using custom-written plotByPlan function: (see Appendix)
+va18age21Bronze <- plotByPlan("Bronze", "Premium Adult Individual Age 21", va18)
+va17age21Bronze <- plotByPlan("Bronze", "Premium Adult Individual Age 21", va17)
+va16age21Bronze <- plotByPlan("Bronze", "Premium Adult Individual Age 21", va16)
+va15age21Bronze <- plotByPlan("Bronze", "Premium Adult Individual Age 21", va15)
+va14age21Bronze <- plotByPlan("Bronze", "Premium Adult Individual Age 21", va14)
+
+county_choropleth(va18age21Bronze, state_zoom = "virginia", title = "Bronze Plan Premiums for 21 Year-olds in 2017", legend = "Price in USD")
+
+county_choropleth(va17age21Bronze, state_zoom = "virginia", title = "Bronze Plan Premiums for 21 Year-olds in 2016", legend = "Price in USD")
+
+county_choropleth(va16age21Bronze, state_zoom = "virginia", title = "Bronze Plan Premiums for 21 Year-olds in 2015", legend = "Price in USD")
+
+county_choropleth(va15age21Bronze, state_zoom = "virginia", title = "Bronze Plan Premiums for 21 Year-olds in 2014", legend = "Price in USD")
+
+county_choropleth(va14age21Bronze, state_zoom = "virginia", title = "Bronze Plan Premiums for 21 Year-olds in 2013", legend = "Price in USD")
+```
+
+##Choropleth Mapping of Income Data {#apend7}
+
+Return to [Choropleth Mapping of Data:]
+
+```{r message=FALSE, warning=FALSE}
+county_choropleth(vaIncome, title = "2016 Median Household Income", legend = "Household Income (USD)", state_zoom = "virginia")
+```
+
+##Choropleth Mapping of Education Data {#apend8}
+
+Return to [Choropleth Mapping of Data:]
+
+```{r message=FALSE, warning=FALSE}
+edu <- select(eduRaw, c(Id2, `Percent; Estimate; Percent bachelor's degree or higher`, `Percent; Estimate; Percent high school graduate or higher`))
+colnames(edu) <- c("region", "bachelor", "hs")
+vaEdu <- left_join(vaFIPS, edu)
+plotBach <- data.frame(region = vaEdu$region, value = vaEdu$bachelor)
+county_choropleth(plotBach, title = "Percent with Bachelor's Degrees or Higher", legend = "Percent of Population", state_zoom = "virginia", num_colors = 9)
+plotHS <- data.frame(region = vaEdu$region, value = vaEdu$hs)
+county_choropleth(plotHS, title = "Percent with High School Degrees or Higher", legend = "Percent of Population", state_zoom = "virginia", num_colors = 9)
+```
+
+
+##Plot of Monthly Premiums vs. Medicare Reimbursement {#apend9}
+
+Return to [Non-Parametric vs. Parametric Analysis of Healthcare Premiums and Medicare Reimbursements]
+
+```{r, warning = FALSE, message = FALSE}
+dta <- na.omit(left_join(medicareVA, data.frame(va17age21Bronze), by = c("FIPS.County.Code" ="region")))
+dta <- dta[order(dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014.),]
+plot(dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014., dta$value, xlab = "Medicare Reimbursement ($)", ylab = "Monthly Premiums ($)", main = "Monthly Premiums vs. Medicare Reimbursement")
+```
+
+##Local Linear Regression on Premiums Data {#apend10}
+
+Return to [Non-Parametric vs. Parametric Analysis of Healthcare Premiums and Medicare Reimbursements]
+
+```{r, warning=FALSE, message=FALSE}
+#use to find optimum bandwidth for locfit
+optBandwidth <- function(y, x, h_test){
+  risk <- rep(NA, length(h_test))
+  n <- length(y)
+  for(i in 1:length(h_test)){
+    model <- locfit(y~x, alpha = c(0, h[i]), deg = 1)
+    Lii <- predict(model, where = "data", what = "infl")
+    risk[i] <- (1/n) * sum(((y-fitted(model))/(1-Lii))^2)
+  }
+  return(risk)
+}
+
+dta <- na.omit(left_join(medicareVA, data.frame(va17age21Bronze), by = c("FIPS.County.Code" ="region")))
+dta <- dta[order(dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014.),]
+
+#Local Regression:
+h <- seq(1000, 2000, 100)
+risk <- optBandwidth(dta$value,
+             dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014., 
+             h)
+
+plot(h, risk, main = "Risk Decay vs. Bandwidth")
+hopt <- h[which.min(risk)]
+model <- locfit(dta$value~dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014.,
+                alpha = c(0, hopt), deg = 1)
+#Creating Confidence Bands:
+set.seed(1)
+#B = number of iterations
+B = 50
+#Number of datapoints to sample:
+n = 100
+conf.mat <- matrix(nrow = length(fitted(model)), ncol = B)
+for(i in 1:B){
+  indx <- sample(1:length(fitted(model)), n, replace = TRUE)
+  trainX <- dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014.[indx]
+  trainY <- dta$value[indx]
+  risk <- optBandwidth(trainY,trainX, h)
+  hopt <- h[which.min(risk)]
+  tmpModel <- locfit(trainY~trainX, deg = 1, alpha = c(0, hopt))
+  pred <- predict(tmpModel, newdata = dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014.)
+  conf.mat[,i] <- pred
+}
+conf <- apply(conf.mat, 1, quantile, probs = c(0.025, 0.975))
+upper <- conf[1,]
+lower <- conf[2,]
+
+
+#Plotting:
+{plot(dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014., 
+      dta$value, 
+      xlab = "Medicare Reimbursements per Enrollee ($)",
+      ylab = "Bronze Premiums (2014, Age = 21) ($)",
+      main = "Local Linear Regression: Premiums v. Medicare Reimbursements"
+      ,cex = 0.5
+      )
+lines(model, col = "red", lwd =2)
+points(dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014., upper, type = "l")
+points(dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014., lower, type =  "l")
+}
+```
+
+
+##Second-Degree Local Polynomial Regression on Premiums Data {#apend11}
+
+Return to [Non-Parametric vs. Parametric Analysis of Healthcare Premiums and Medicare Reimbursements]
+
+```{r, warning=FALSE, message=FALSE}
+#use to find optimum bandwidth for locfit
+optBandwidth <- function(y, x, h_test){
+  risk <- rep(NA, length(h_test))
+  n <- length(y)
+  for(i in 1:length(h_test)){
+    model <- locfit(y~x, alpha = c(0, h[i]), deg  = 2)
+    Lii <- predict(model, where = "data", what = "infl")
+    risk[i] <- (1/n) * sum(((y-fitted(model))/(1-Lii))^2)
+  }
+  return(risk)
+}
+
+dta <- na.omit(left_join(medicareVA, data.frame(va17age21Bronze), by = c("FIPS.County.Code" ="region")))
+dta <- dta[order(dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014.),]
+
+#Local Regression:
+h <- seq(1000, 2000, 100)
+risk <- optBandwidth(dta$value,
+             dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014., 
+             h)
+
+plot(h, risk, main = "Risk Decay vs. Bandwidth")
+hopt <- h[which.min(risk)]
+model <- locfit(dta$value~dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014.,
+                alpha = c(0, hopt), deg = 2)
+#Creating Confidence Bands:
+set.seed(1)
+#B = number of iterations
+B = 50
+#Number of datapoints to sample:
+n = 100
+conf.mat <- matrix(nrow = length(fitted(model)), ncol = B)
+for(i in 1:B){
+  indx <- sample(1:length(fitted(model)), n, replace = TRUE)
+  trainX <- dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014.[indx]
+  trainY <- dta$value[indx]
+  risk <- optBandwidth(trainY,trainX, h)
+  hopt <- h[which.min(risk)]
+  tmpModel <- locfit(trainY~trainX, deg = 2, alpha = c(0, hopt))
+  pred <- predict(tmpModel, newdata = dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014.)
+  conf.mat[,i] <- pred
+}
+conf <- apply(conf.mat, 1, quantile, probs = c(0.025, 0.975))
+upper <- conf[1,]
+lower <- conf[2,]
+
+
+#Plotting:
+{plot(dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014., 
+      dta$value, 
+      xlab = "Medicare Reimbursements per Enrollee ($)",
+      ylab = "Bronze Premiums (2014, Age = 21) ($)",
+      main = "Second-Degree Polynomial Regression: \nPremiums v. Medicare Reimbursements"
+      ,cex = 0.5
+      )
+lines(model, col = "red", lwd =2)
+points(dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014., upper, type = "l")
+points(dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014., lower, type =  "l")
+}
+```
+
+
+
+##Smoothing Spline Fit on Premiums Data {#apend12}
+
+Return to [Non-Parametric vs. Parametric Analysis of Healthcare Premiums and Medicare Reimbursements]
+
+```{r, warning = FALSE, message = FALSE}
+#Smoothing Spline:
+model2 <- smooth.spline(dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014., dta$value, cv = TRUE)
+
+#Creating Confidence Bands:
+#Source: CMU Data Analysis Course
+#URL: http://www.stat.cmu.edu/~cshalizi/402/lectures/11-splines/lecture-11.pdf
+resampler <- function(data) {
+    n <- nrow(data)
+    resample.rows <- sample(1:n,size=n,replace=TRUE)
+    return(data[resample.rows,])
+}
+
+spline.estimator <- function(data,m=300) {
+    fit <- smooth.spline(x=data[,1],y=data[,2],cv=TRUE)
+    eval.grid <- seq(from=min(data[,1]),to=max(data[,1]),length.out=m)
+    return(predict(fit,x=eval.grid)$y) # We only want the predicted values
+}
+
+spline.cis <- function(data,B,alpha=0.05,m=300) {
+    spline.main <- spline.estimator(data,m=m)
+    spline.boots <- replicate(B,spline.estimator(resampler(data),m=m))
+    cis.lower <- 2*spline.main - apply(spline.boots,1,quantile,probs=1-alpha/2)
+    cis.upper <- 2*spline.main - apply(spline.boots,1,quantile,probs=alpha/2)
+    return(list(main.curve=spline.main,lower.ci=cis.lower,upper.ci=cis.upper,
+    x=seq(from=min(data[,1]),to=max(data[,1]),length.out=m)))
+}
+
+dataTmp <- matrix(nrow= dim(dta)[1], ncol = 2)
+dataTmp[,1] <- dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014.
+dataTmp[,2] <- dta$value
+
+#run and plot
+sp.cis <- spline.cis(dataTmp, B=1000,alpha=0.05)
+
+{plot(dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014., 
+      dta$value, 
+      xlab = "Medicare Reimbursements per Enrollee ($)",
+      ylab = "Bronze Premiums (2014, Age = 21) ($)",
+      main = "Cubic Smoothing Spline: Premiums v. Medicare Reimbursements"
+      )
+lines(model2, col = "red", lwd =2)
+lines(x=sp.cis$x,y=sp.cis$lower.ci, lty=2)
+lines(x=sp.cis$x,y=sp.cis$upper.ci, lty=2)}
+```
+
+##Linear Regression on Premiums Data {#apend13}
+
+Return to [Non-Parametric vs. Parametric Analysis of Healthcare Premiums and Medicare Reimbursements]
+
+```{r, warning = FALSE, message = FALSE}
+x <- dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014.
+model3<- lm(dta$value~x)
+
+confidence <- predict(model3, 
+                      newdata=data.frame(x=x), 
+                      interval="confidence", level = 0.95)
+{plot(dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014., 
+      dta$value, 
+      xlab = "Medicare Reimbursements per Enrollee ($)",
+      ylab = "Bronze Premiums (2014, Age = 21) ($)",
+      main = "Linear Regression: Premiums v. Medicare Reimbursements, 
+      Blue Lines = 95% Confidence Interval",
+      cex = 0.5
+      )
+lines(x = dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014.,
+      y = model3$fitted.values,col = "red", lwd =2)
+lines(dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014.,
+       confidence[,2], col = "blue", lty = "dashed")
+lines(dta$Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014.,
+       confidence[,3], col = "blue", lty = "dashed")
+}
+```
+
+##Linear Regression on Premiums Data Model Summary {#apend14}
+
+Return to [Non-Parametric vs. Parametric Analysis of Healthcare Premiums and Medicare Reimbursements]
+
+```{r}
+summary(model3)
+```
+
+
+##Local Linear Regression & Linear Regression Model on Education & Income Data {#apend15}
+
+Return to [Non-Parametric vs. Parametric Analysis of Education and Income:]
+
+```{r}
+set.seed(1)
+#Prepare Data:
+vaIncome$value <- as.numeric(vaIncome$value)
+vaEdu$hs <- as.numeric(vaEdu$hs)
+vaTmp <- vaEdu
+vaTmp$hs <- as.numeric(vaEdu$hs)
+vaTmp$income <- as.numeric(vaIncome$value)
+vaTmp <- vaTmp[rowSums(is.na(vaTmp)) == 0,]
+vaTest <- vaTmp[order(vaTmp$hs),]
+
+#use LOOCV to find optimum bandwidth for locfit
+degree <- 1
+h <- seq(5,20, 1)
+n <- nrow(vaTest)
+optBandwidth <- function(y, x, h_test){
+  risk <- rep(NA, length(h_test))
+  n <- length(y)
+  for(i in 1:length(h_test)){
+    model <- locfit(y~x, alpha = c(0, h[i]), deg  = degree)
+    Lii <- predict(model, where = "data", what = "infl")
+    risk[i] <- (1/n) * sum(((y-fitted(model))/(1-Lii))^2)
+  }
+  return(risk)
+}
+risk <- optBandwidth(vaTest$income, vaTest$hs, h)
+plot(h, risk, main = "Risk vs. Bandwidth", xlab = "Bandwidth", ylab = "Risk")
+opth <- h[which(min(risk) == risk)]
+HSmodel <- locfit(vaTest$income~vaTest$hs, deg = degree, alpha = c(0, opth))
+NPminMSE <- (1/n)*sum((vaTest$income-fitted(HSmodel))^2)
+HSParametric <- lm(vaTest$income~vaTest$hs)
+PminMSE <- (1/n)*sum((vaTest$income-fitted(HSParametric))^2)
+NPminMSE
+PminMSE
+
+#Creating Local Regression Confidence Bands:
+    #B = number of iterations
+B = 40
+    #Number of datapoints to sample:
+n = 30
+conf.mat <- matrix(nrow = length(fitted(HSmodel)), ncol = B)
+for(i in 1:B){
+  indx <- sample(1:length(fitted(model)), n, replace = TRUE)
+  trainX <- vaTest$hs[indx]
+  trainY <- vaTest$income[indx]
+  risk <- optBandwidth(trainY,trainX, h)
+  hopt <- h[which.min(risk)]
+  tmpModel <- locfit(trainY~trainX, deg = degree, alpha = c(0, hopt))
+  pred <- predict(tmpModel, newdata = vaTest$hs)
+  conf.mat[,i] <- pred
+}
+conf <- apply(conf.mat, 1, quantile, probs = c(0.025, 0.975))
+upper <- conf[1,]
+lower <- conf[2,]
+
+#Creating Linear Regression Confidence Bands:
+confidence <- predict(HSParametric, 
+                      newdata=data.frame(x=vaTest$hs), 
+                      interval="confidence", level = 0.95)
+
+#Plotting Non-Parametric Model:
+{plot(vaTest$hs, vaTest$income, ylab = "Median Household Income", xlab  = "Percent with High School Degree", main = "Income and High School Degree\n (Non-Parametric Model)", cex = 1)
+lines(HSmodel, col = "blue", lwd = "2")
+lines(vaTest$hs, lower, lty = "dashed", col = "red", lwd = 2)
+lines(vaTest$hs, upper, lty = "dashed", col = "red", lwd = 2)
+}
+
+#Plotting Parametric Model:
+{
+plot(vaTest$hs, vaTest$income, ylab = "Median Household Income", xlab  = "Percent with High School Degree", main = "Income and High School Degree\n (Parametric Model)", cex = 1)
+lines(vaTest$hs, HSParametric$fitted.values, col = "blue", lwd = 2)
+lines(vaTest$hs, confidence[,2], lty = "dashed", col = "red", lwd = 2)
+lines(vaTest$hs, confidence[,3], lty = "dashed", col = "red", lwd = 2)
+ 
+}
+```
+
+##Exponential Model of Income & Education Data {#apend16}
+
+Return to [Non-Parametric vs. Parametric Analysis of Education and Income:]
+
+```{r}
+#take log transformation of data
+#logX <- log(vaTest$hs, base = exp(1))
+logX <- vaTest$hs
+logY <- log(vaTest$income, base = exp(1))
+#Fit linear model to log transformation
+logModel <- lm(logY~logX)
+
+{plot(logX, logY, main = "Log Transformation of Data", xlab = 
+       "Log % of Population with HS Degree", ylab = "Log Median Household Income", col = "turquoise", pch = 16, cex = 0.8)
+  abline(logModel, col = "blue", lwd = 2)}
+
+#Re-transform log model into exponential model:
+expModel <- function(x){
+  fit <- exp(logModel$coefficients[1] + logModel$coefficients[2]*x)
+  return(fit)
+} 
+
+x <- seq(min(vaTest$hs), max(vaTest$hs), by = 0.03)
+
+#Creating Exponential Model Confidence Bands:
+    #B = number of iterations
+B = 50
+    #Number of datapoints to sample:
+n = 100
+conf.mat <- matrix(nrow = length(x), ncol = B)
+error <- rep(NA, B)
+for(i in 1:B){
+  indx <- sample(1:length(fitted(model)), n, replace = TRUE)
+  trainX <- vaTest$hs[indx]
+  trainY <- log(vaTest$income[indx])
+  tmpModel <- lm(trainY~trainX)
+  pred <- exp(tmpModel$coefficients[1] + tmpModel$coefficients[2]*x)
+  conf.mat[,i] <- pred
+  msePred <- exp(tmpModel$coefficients[1] + tmpModel$coefficients[2]*vaTest$hs)
+  error[i] <- (1/length(msePred))*sum((msePred - vaTest$income)^2)
+}
+
+#expMSE <- mean(error)
+expMSE <- (1/length(logX))*sum((vaTest$income-expModel(vaTest$hs))^2)
+conf <- apply(conf.mat, 1, quantile, probs = c(0.025, 0.975))
+upper1 <- conf[1,]
+lower1 <- conf[2,]
+
+
+#Plot Exponential Model:
+{plot(x, expModel(x), ylab = "Median Household Income", xlab  = "Percent with High School Degree", main = "Income and High School Degree\n (Parametric Model)", type = "l", col = "blue", lwd = 2)
+  points(vaEdu$hs, vaIncome$value, col = "turquoise", pch = 16, cex =0.8)
+  lines(x, lower1, lwd = 2, lty = "dashed")
+  lines(x, upper1, lwd = 2, lty = "dashed")}
+
+```
+
+
+##Parametric vs. Non-Parametric Side-by-Side Plot {#apend1X}
+
+Return to [Non-Parametric vs. Parametric Analysis of Education and Income:]
+
+```{r}
+#Plot Local Linear and Exponential Model:
+{par(mfrow=c(1,2))
+  {plot(x, expModel(x), ylab = "Median Household Income", xlab  = "Percent with High School Degree", main = "Income and High School Degree\n (Parametric Model)", type = "l", col = "blue", lwd = 2)
+  points(vaEdu$hs, vaIncome$value, col = "grey", pch = 16, cex =0.8)
+  lines(x, lower1, lwd = 2, lty = "dashed")
+  lines(x, upper1, lwd = 2, lty = "dashed")}
+  plot(vaTest$hs, vaTest$income, ylab = "Median Household Income", xlab  = "Percent with High School Degree", main = "Income and High School Degree\n (Non-Parametric Model)", cex = 0.8, pch = 16, col = "grey")
+lines(HSmodel, col = "blue", lwd = "2")
+lines(vaTest$hs, lower, lty = "dashed", lwd = 2)
+lines(vaTest$hs, upper, lty = "dashed", lwd = 2)
+}
+
+```
+
+
+##Parametric and Non-Parametric Regression on Bachelor's Degree Data {#apend17}
+
+Return to [Non-Parametric vs. Parametric Analysis of Education and Income:]
+
+
+```{r}
+vaTest2 <- vaTest[order(vaTest$bachelor),]
+set.seed(1)
+degree <- 1
+
+#use LOOCV to find optimum bandwidth for locfit
+h <- seq(100,200, 10)
+n <- nrow(vaTest2)
+optBandwidth <- function(y, x, h_test){
+  risk <- rep(NA, length(h_test))
+  n <- length(y)
+  for(i in 1:length(h_test)){
+    model <- locfit(y~x, alpha = c(0, h[i]), deg  = degree)
+    Lii <- predict(model, where = "data", what = "infl")
+    risk[i] <- (1/n) * sum(((y-fitted(model))/(1-Lii))^2)
+  }
+  return(risk)
+}
+
+risk <- optBandwidth(vaTest2$income, vaTest2$bachelor, h)
+plot(h, risk, main = "Risk vs. Bandwidth", xlab = "Bandwidth", ylab = "Risk")
+opth <- h[which(min(risk) == risk)]
+Bachmodel <- locfit(vaTest2$income~vaTest2$bachelor, alpha = c(0, opth), deg = degree)
+BachParametric <- lm(vaTest2$income~vaTest2$bachelor)
+
+#Creating Local Regression Confidence Bands:
+    #B = number of iterations
+B = 60
+    #Number of datapoints to sample:
+n = 30
+conf.mat <- matrix(nrow = nrow(vaTest2), ncol = B)
+for(i in 1:B){
+  indx <- sample(1:nrow(vaTest2), n, replace = FALSE)
+  trainX <- vaTest2$bachelor[indx]
+  trainY <- vaTest2$income[indx]
+  risk <- optBandwidth(trainY,trainX, h)
+  hopt <- h[which.min(risk)]
+  tmpModel <- locfit(trainY~trainX, deg = degree, alpha = c(0, hopt))
+  pred <- predict(tmpModel, newdata = vaTest2$bachelor)
+  conf.mat[,i] <- pred
+}
+conf <- apply(conf.mat, 1, quantile, probs = c(0.025, 0.975))
+upper <- conf[1,]
+lower <- conf[2,]
+
+#Creating Linear Regression Confidence Bands:
+confidence <- predict(BachParametric, 
+                      newdata=data.frame(x=vaTest2$bachelor), 
+                      interval="confidence", level = 0.95)
+
+{plot(vaTest2$bachelor, vaTest2$income, ylab = "Median Household Income", xlab  = "Percent with Bachelor Degree", main = "Income and Bachelor Degree\n (Non-Parametric Model)", pch = 16, cex = 0.8, col = "grey")
+lines(Bachmodel, col = "blue", lwd = 2)
+lines(vaTest2$bachelor, lower, lty = "dashed", col = "red", lwd = 2)
+lines(vaTest2$bachelor, upper, lty = "dashed", col = "red", lwd = 2)
+}
+
+{plot(vaTest2$bachelor, vaTest2$income, ylab = "Median Household Income", xlab  = "Percent with Bachelor Degree", main = "Income and Bachelor Degree \n (Parametric Model)", pch = 16, cex = 0.8, col = "grey")
+lines(vaTest2$bachelor, BachParametric$fitted.values, col = "blue", lwd = 2)
+lines(vaTest2$bachelor, confidence[,2], col = "red", lty = "dashed", lwd = 2)
+lines(vaTest2$bachelor, confidence[,3], col = "red", lty = "dashed", lwd = 2)}
+```
+
+##Combining Data for GAM Modelling {#apend18}
+
+Return to [Building Spline GAM Model]
+
+```{r, message = FALSE, warning = FALSE}
+va18age21Bronze <- premiumsDeductible("Bronze", "Premium Adult Individual Age 21", 
+                                      "Medical Deductible - Individual - Standard", va18)
+va17age21Bronze <- premiumsDeductible("Bronze", "Premium Adult Individual Age 21", 
+                                      "Medical Deductible - Individual - Standard", va17)
+va16age21Bronze <- premiumsDeductible("Bronze", "Premium Adult Individual Age 21", 
+                                      "Medical Deductible - Individual - Standard", va16)
+va15age21Bronze <- premiumsDeductible("Bronze", "Premium Adult Individual Age 21", 
+                                      "Medical Deductible-individual-standard", va15)
+va14age21Bronze <- premiumsDeductible("Bronze", "Premium Adult Individual Age 21", 
+                                      "Medical Deductible-individual-standard", va14)
+
+#Merging premium and deductible data:
+x <- Reduce(function(...) merge(..., all=TRUE), list(va18age21Bronze,va17age21Bronze,va16age21Bronze,va15age21Bronze,va14age21Bronze))
+names(x) <- c("region","premiums", "deductible")
+
+#Adding in Medicare Data:
+z <- inner_join(x, medicareVA,by = c("region" = "FIPS.County.Code"))
+
+#Adding in Education Data:
+a <- inner_join(z, vaEdu, by = c("region" = "region"))
+
+#Adding in Income Data:
+b <- inner_join(a, incomeVA, by = c("region" = "region"))
+ACAdf <- b[rowSums(is.na(b)) == 0,]
+```
+
+
+##Spline Smoothing GAM Model {#apend19}
+
+Return to [Building Spline GAM Model]
+
+```{r}
+model <- gam(premiums~s(region) + s(Medicare.enrollees..2014.) + s(Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014.) + s(Hospital...skilled.nursing.facility.reimbursements.per.enrollee..2014.) + s(Physician.reimbursements.per.enrollee..2014.) + s(Outpatient.facility.reimbursements.per.enrollee..2014.) + s(Home.health.agency.reimbursements.per.enrollee..2014.) + s(Hospice.reimbursements.per.enrollee..2014.) + s(Durable.medical.equipment.reimbursements.per.enrollee..2014.) + s(bachelor) + s(hs) + s(HouseholdIncome) + s(NonFamilyIncome) + s(MarriedCoupleIncome) + s(FamilyIncome) + s(deductible), family = gaussian, data= ACAdf)
+par(mfrow = c(2,2))
+plot.Gam(model, residuals = TRUE, se = TRUE, cex = 0.1, col = "grey")
+```
+
+##Insurance Deductible Non-Parametric vs. Parametric Fit {#apend20}
+
+Return to [Building Spline GAM Model]
+
+```{r}
+set.seed(1)
+h <- seq(1000,5000, by = 50)
+risk <- rep(NA, length(h))
+for(i in 1:length(h)){
+  model <- locfit(ACAdf$premiums~ACAdf$deductible, alpha = c(0, h[i]))
+  Lii <- predict(model, where = "data", what = "infl")
+  risk[i] <- (1/nrow(ACAdf)) * sum(((ACAdf$premiums-fitted(model))/(1-Lii))^2)
+}
+opth <- h[which(min(risk) == risk)]
+linear <- lm(premiums~deductible, data = ACAdf)
+np <- locfit(premiums~deductible, data = ACAdf, alpha = c(0, opth))
+{plot(ACAdf$deductible, ACAdf$premiums, main = "Deductibles vs. Premiums", xlab = "Deductibles", ylab = "Premiums")
+lines(ACAdf$deductible,linear$fitted.values, col = "red", lwd = 2)
+lines(np, col = "blue", lwd = 2)
+}
+```
+
+##Smoothing Spline GAM Residuals Plot {#apend21}
+
+Return to [Building Spline GAM Model]
+
+```{r}
+{plot(ACAdf$premiums, fitted(model) - ACAdf$premiums, main = "GAM Spline Fit Residuals", 
+     xlab = "Actual Premiums", ylab = "Residual", col = "green")
+  abline(v = mean(ACAdf$premiums))
+}
+```
+
+##K-Fold CV of Smoothing Spline GAM {#apend22}
+
+Return to [Building Spline GAM Model]
+
+```{r}
+set.seed(1)
+#n = sample size
+#k = number of k-fold validations to run
+kFoldSpline <- function(k, n, data) {
+  mseVec <- rep(NA, k)
+  for(i in 1:k){
+    indx <- sample(1:nrow(data), n)
+    test <- data[indx,]
+    train <- data[-indx,]
+    modelTMP <- gam(premiums~s(region) + s(Medicare.enrollees..2014.) + s(Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014.) + s(Hospital...skilled.nursing.facility.reimbursements.per.enrollee..2014.) + s(Physician.reimbursements.per.enrollee..2014.) + s(Outpatient.facility.reimbursements.per.enrollee..2014.) + s(Home.health.agency.reimbursements.per.enrollee..2014.) + s(Hospice.reimbursements.per.enrollee..2014.) + s(Durable.medical.equipment.reimbursements.per.enrollee..2014.) + s(bachelor) + s(hs) + s(HouseholdIncome) + s(NonFamilyIncome) + s(MarriedCoupleIncome) + s(FamilyIncome) + s(deductible), family = gaussian, data= train)
+    predictions <- predict.Gam(modelTMP, newdata = test)
+    mseVec[i] <- (1/n)*(sum(predictions - test$premiums)^2) 
+  }
+  return(mean(mseVec))
+}
+
+splineMSE <- kFoldSpline(20, 100, ACAdf)
+splineMSE
+```
+
+##GAM Local Regression Model {#apend23}
+
+Return to [Building GAM Local Regression]
+
+```{r, message = FALSE, warning = FALSE}
+modelLocal <- gam(premiums~lo(region) + lo(Medicare.enrollees..2014.) + lo(Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014.) + lo(Hospital...skilled.nursing.facility.reimbursements.per.enrollee..2014.) + lo(Physician.reimbursements.per.enrollee..2014.) + lo(Outpatient.facility.reimbursements.per.enrollee..2014.) + lo(Home.health.agency.reimbursements.per.enrollee..2014.) + lo(Hospice.reimbursements.per.enrollee..2014.) + lo(Durable.medical.equipment.reimbursements.per.enrollee..2014.) + lo(bachelor) + lo(hs) + lo(HouseholdIncome) + lo(NonFamilyIncome) + lo(MarriedCoupleIncome) + lo(FamilyIncome) + lo(deductible), family = gaussian, data= ACAdf)
+
+par(mfrow = c(2,2))
+plot.Gam(modelLocal, residuals = TRUE, se = TRUE, cex = 0.1, col = "grey")
+```
+
+##Comparison of Residuals from GAM Smoothing Spline and GAM Local Regression {#apend24}
+
+Return to [Building GAM Local Regression]
+
+```{r}
+par(mfrow = c(1,2))
+plot(ACAdf$premiums, fitted(model) - ACAdf$premiums, main = "GAM Spline \n Residuals", 
+     xlab = "Actual Premiums", ylab = "Residuals")
+plot(ACAdf$premiums, fitted(modelLocal) - ACAdf$premiums, main = "GAM Local Regression\n Residuals", 
+     xlab = "Actual Premiums", ylab = "Residuals", col = "red")
+```
+
+##Tight Fit of GAM Smoothing Spline and Local Regression Residuals Plot {#apend25}
+
+Return to [Building GAM Local Regression]
+
+```{r, message = FALSE, warning = FALSE}
+modelTight <- gam(premiums~s(region, spar = 0.4) + s(Medicare.enrollees..2014., spar = 0.4) + s(Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014., spar = 0.4) + s(Hospital...skilled.nursing.facility.reimbursements.per.enrollee..2014., spar = 0.4) + s(Physician.reimbursements.per.enrollee..2014., spar = 0.4) + s(Outpatient.facility.reimbursements.per.enrollee..2014., spar = 0.4) + s(Home.health.agency.reimbursements.per.enrollee..2014., spar = 0.4) + s(Hospice.reimbursements.per.enrollee..2014., spar = 0.4) + s(Durable.medical.equipment.reimbursements.per.enrollee..2014., spar = 0.4) + s(bachelor, spar = 0.4) + s(hs, spar = 0.4) + s(HouseholdIncome, spar = 0.4) + s(NonFamilyIncome, spar = 0.4) + s(MarriedCoupleIncome, spar = 0.4) + s(FamilyIncome, spar = 0.4) + s(deductible, spar = 0.4), family = gaussian, data= ACAdf)
+
+modelLocalTight <- gam(premiums~lo(region, span = 0.1) + lo(Medicare.enrollees..2014., span = 0.1 ) + lo(Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014., span = 0.1 ) + lo(Hospital...skilled.nursing.facility.reimbursements.per.enrollee..2014., span = 0.1 ) + lo(Physician.reimbursements.per.enrollee..2014., span = 0.1) + lo(Outpatient.facility.reimbursements.per.enrollee..2014., span = 0.1 ) + lo(Home.health.agency.reimbursements.per.enrollee..2014., span = 0.1 ) + lo(Hospice.reimbursements.per.enrollee..2014., span = 0.1 ) + lo(Durable.medical.equipment.reimbursements.per.enrollee..2014., span = 0.1 ) + lo(bachelor, span = 0.1) + lo(hs, span = 0.1) + lo(HouseholdIncome, span = 0.1 ) + lo(NonFamilyIncome, span = 0.1 ) + lo(MarriedCoupleIncome, span = 0.1 ) + lo(FamilyIncome, span = 0.1 ) + lo(deductible, span = 0.1), family = gaussian, data= ACAdf)
+
+{par(mfrow = c(2,2))
+plot.Gam(modelLocalTight, residuals = TRUE, se = TRUE, cex = 0.1, col = "grey")}
+
+{par(mfrow=c(1,2))
+  plot(ACAdf$premiums, fitted(modelTight) - ACAdf$premiums, main = "Tight GAM Spline \n Fit Residuals", 
+     xlab = "Actual Premiums", ylab = "Residual", col = "green")
+  abline(v = mean(ACAdf$premiums))
+plot(ACAdf$premiums, fitted(modelLocalTight) - ACAdf$premiums, main = "Tight GAM Local \n Regression Residuals", 
+     xlab = "Actual Premiums", ylab = "Residual", col = "green")
+  abline(v = mean(ACAdf$premiums))
+}
+```
+
+##K-Fold CV of GAM Local Regression Model {#apend26}
+
+Return to [Building GAM Local Regression]
+
+```{r, warning = FALSE, message=FALSE}
+set.seed(1)
+#n = sample size
+#k = number of k-fold validations to run
+kFoldLocal <- function(k, n, data) {
+  mseVec <- rep(NA, k)
+  for(i in 1:k){
+    indx <- sample(1:nrow(data), n)
+    test <- data[indx,]
+    train <- data[-indx,]
+    modelTMP <- gam(premiums~lo(region) + lo(Medicare.enrollees..2014.) + lo(Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014.) + lo(Hospital...skilled.nursing.facility.reimbursements.per.enrollee..2014.) + lo(Physician.reimbursements.per.enrollee..2014.) + lo(Outpatient.facility.reimbursements.per.enrollee..2014.) + lo(Home.health.agency.reimbursements.per.enrollee..2014.) + lo(Hospice.reimbursements.per.enrollee..2014.) + lo(Durable.medical.equipment.reimbursements.per.enrollee..2014.) + lo(bachelor) + lo(hs) + lo(HouseholdIncome) + lo(NonFamilyIncome) + lo(MarriedCoupleIncome) + lo(FamilyIncome) + lo(deductible), family = gaussian, data= train)
+    predictions <- predict.Gam(modelTMP, newdata = test)
+    mseVec[i] <- (1/n)*(sum(predictions - test$premiums)^2) 
+  }
+  return(mean(mseVec))
+}
+
+localMSE <- kFoldLocal(20, 100, ACAdf)
+localMSE
+```
+
+##Finding Optimal Lambda Value for LASSO {#apend27}
+
+Return to [Multivariate LASSO Regression Model (Parametric)]
+
+```{r}
+set.seed(1)
+y <- ACAdf$premiums
+x <- as.matrix(select(ACAdf, c(region,Medicare.enrollees..2014., Total.Medicare.reimbursements.per.enrollee..Parts.A.and.B...2014., Hospital...skilled.nursing.facility.reimbursements.per.enrollee..2014., Physician.reimbursements.per.enrollee..2014., Outpatient.facility.reimbursements.per.enrollee..2014., Home.health.agency.reimbursements.per.enrollee..2014., Hospice.reimbursements.per.enrollee..2014.,  Durable.medical.equipment.reimbursements.per.enrollee..2014., bachelor, hs, HouseholdIncome, NonFamilyIncome, MarriedCoupleIncome, FamilyIncome, deductible)))
+
+optLambda <- cv.glmnet(x, y, family = "gaussian", nfolds = 50, alpha = 1)
+plot(optLambda)
+```
+
+
+##LASSO Selection Mechanics and Residuals {#apend28}
+
+Return to [Multivariate LASSO Regression Model (Parametric)]
+
+```{r}
+lassoModel <- glmnet(x, y, family = "gaussian", alpha = 1)
+
+{par(mfrow = c(1,2))
+  plot(lassoModel, xvar = "norm", label = TRUE)
+plot(lassoModel, xvar = "dev", label = TRUE)}
+par(mfrow = c(1,1))
+plot(lassoModel, xvar = "lambda", label = TRUE)
+
+pred <- predict.glmnet(lassoModel,newx = x, s = optLambda$lambda.min)
+resid <- pred - y
+par(mfrow = c(1,1))
+{plot(ACAdf$premiums, resid, xlab = "Actual Premiums ($)", ylab = "Residuals ($)", main = "LASSO Residuals", col = "blue")
+abline(v = mean(ACAdf$premiums))}
+```
+
+##Comparison of GAM Smoothing Spline and GAM Local Regression Residuals {#apend29}
+
+Return to [Multivariate LASSO Regression Model (Parametric)]
+
+```{r}
+par(mfrow = c(1,2))
+{plot(ACAdf$premiums, fitted(model) - ACAdf$premiums, main = "GAM SplineResiduals", 
+     xlab = "Actual Premiums", ylab = "Residuals")
+abline(v = mean(ACAdf$premiums))}
+{plot(ACAdf$premiums, fitted(modelLocal) - ACAdf$premiums, main = "GAM Local Regression\n Residuals", 
+     xlab = "Actual Premiums", ylab = "Residuals", col = "red")
+abline(v = mean(ACAdf$premiums))}
+```
+
+##K-Fold CV of LASSO Model {#apend30}
+
+Return to [Multivariate LASSO Regression Model (Parametric)]
+
+```{r}
+set.seed(1)
+#k = number of k-fold interations
+#n = size of test set
+lassoKFold <- function(k, n, x, y){
+  mseVec <- rep(NA, k)
+  for(i in 1:k){
+    indx <- sample(1:nrow(x), n)
+    trainX <- x[-indx,]
+    trainY <- y[-indx]
+    testX <- x[indx,]
+    testY <- y[indx]
+    optLmdTmp <- cv.glmnet(trainX, trainY, family = "gaussian", nfolds = 20, alpha = 1)
+    model <- glmnet(trainX, trainY, family = "gaussian", alpha = 1)
+    pred <- predict.glmnet(lassoModel,newx = testX, s = optLmdTmp$lambda.min)
+    mseVec[i] <- (1/n) * sum((pred - testY)^2)
+  }
+  return(mean(mseVec))
+}
+
+LassoMSE <- lassoKFold(20, 100, x, y)
+LassoMSE
+```
+
